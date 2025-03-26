@@ -4,7 +4,9 @@ echo "Building the Rust project..."
 echo "          "
 echo "          "
 echo "          "
-echo "Remobing existing directories, if there is any..."
+
+
+echo "Removing existing directories, if there is any..."
 # Remove existing builds directory and executable if they exist
 rm -rf builds gaspy
 
