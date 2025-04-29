@@ -1,22 +1,49 @@
 use clap::{Arg, Command};
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn count_lines_in_file(filename: &Path) -> io::Result<usize> {
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
 
-    let count = reader.lines().count();
+    // Only count non-empty lines
+    let count = reader
+        .lines()
+        .filter_map(Result::ok) // Handle any IO errors in reading lines
+        .filter(|line| !line.trim().is_empty()) // Skip blank/empty lines
+        .count();
+
     Ok(count)
 }
 
-fn count_lines_in_dir(dir_path: &Path, recursive: bool) -> io::Result<usize> {
+fn should_exclude(path: &Path, excluded_names: &HashSet<String>) -> bool {
+    // Check if the file or directory name is in the excluded list
+    if let Some(name) = path.file_name() {
+        if let Some(name_str) = name.to_str() {
+            return excluded_names.contains(name_str);
+        }
+    }
+    false
+}
+
+fn count_lines_in_dir(
+    dir_path: &Path,
+    recursive: bool,
+    excluded_names: &HashSet<String>,
+) -> io::Result<usize> {
     let mut total_lines = 0;
 
     for entry in fs::read_dir(dir_path)? {
         let entry = entry?;
         let path = entry.path();
+
+        // Skip if this path's name is in the excluded list
+        if should_exclude(&path, excluded_names) {
+            eprintln!("Skipping excluded: {}", path.display());
+            continue;
+        }
 
         if path.is_file() {
             match count_lines_in_file(&path) {
@@ -24,7 +51,7 @@ fn count_lines_in_dir(dir_path: &Path, recursive: bool) -> io::Result<usize> {
                 Err(e) => eprintln!("Error counting lines in {}: {}", path.display(), e),
             }
         } else if path.is_dir() && recursive {
-            match count_lines_in_dir(&path, recursive) {
+            match count_lines_in_dir(&path, recursive, excluded_names) {
                 Ok(count) => total_lines += count,
                 Err(e) => eprintln!("Error processing directory {}: {}", path.display(), e),
             }
@@ -34,13 +61,23 @@ fn count_lines_in_dir(dir_path: &Path, recursive: bool) -> io::Result<usize> {
     Ok(total_lines)
 }
 
-fn count_lines(path_str: &str, recursive: bool) -> io::Result<usize> {
+fn count_lines(
+    path_str: &str,
+    recursive: bool,
+    excluded_names: &HashSet<String>,
+) -> io::Result<usize> {
     let path = Path::new(path_str);
+
+    // Skip if this path's name is in the excluded list
+    if should_exclude(path, excluded_names) {
+        eprintln!("Skipping excluded: {}", path_str);
+        return Ok(0);
+    }
 
     if path.is_file() {
         count_lines_in_file(path)
     } else if path.is_dir() {
-        count_lines_in_dir(path, recursive)
+        count_lines_in_dir(path, recursive, excluded_names)
     } else {
         Err(io::Error::new(
             io::ErrorKind::NotFound,
@@ -82,6 +119,14 @@ fn main() -> io::Result<()> {
                 .action(clap::ArgAction::SetTrue),
         )
         .arg(
+            Arg::new("exclude")
+                .short('e')
+                .long("exclude")
+                .help("Exclude directories or files by name (e.g., 'node_modules', '.git')")
+                .action(clap::ArgAction::Append)
+                .num_args(1..),
+        )
+        .arg(
             Arg::new("files")
                 .help("Files or directories to process")
                 .index(1)
@@ -89,9 +134,19 @@ fn main() -> io::Result<()> {
         )
         .get_matches();
 
+    // Explicitly check flag values
     let recursive = matches.get_flag("recursive");
     let count_mode = matches.get_flag("count");
 
+    // Build a set of excluded names
+    let mut excluded_names = HashSet::new();
+    if let Some(excludes) = matches.get_many::<String>("exclude") {
+        for exclude_name in excludes {
+            excluded_names.insert(exclude_name.to_string());
+        }
+    }
+
+    // If no files are provided, read from stdin
     if !matches.contains_id("files") {
         eprintln!("Reading from stdin not yet implemented");
         return Ok(());
@@ -103,8 +158,9 @@ fn main() -> io::Result<()> {
         let paths_vec: Vec<_> = paths.collect();
 
         for path_str in &paths_vec {
+            // Process the path based on mode
             if count_mode {
-                match count_lines(path_str, recursive) {
+                match count_lines(path_str, recursive, &excluded_names) {
                     Ok(count) => {
                         println!("{}: {} lines", path_str, count);
                         total_lines += count;
