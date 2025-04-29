@@ -38,21 +38,6 @@ To read and display the contents of one or more files:
 ./gaspy path/to/file1.txt path/to/file2.txt
 ```
 
-### Processing Standard Input
-
-To read from standard input (piped or direct):
-
-```
-echo "Hello, World!" | ./gaspy
-```
-
-Or interactively:
-
-```
-./gaspy
-Type something here...
-```
-
 ## Error Handling
 
 If a file cannot be opened or read, Gaspy will display an error message and continue processing any remaining files.
