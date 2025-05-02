@@ -21,7 +21,7 @@ Gaspy is a lightweight Rust application that provides file reading and line coun
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/gaspy.git
+   git clone https://github.com/NickSishchuck/gaspy.git
    cd gaspy
    ```
 
