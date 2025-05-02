@@ -1,11 +1,15 @@
 # Gaspy
 
-A simple command-line utility for reading and displaying file contents or standard input.
+A command-line utility for reading file contents and counting lines in files and directories.
 
 ## Overview
 
-Gaspy is a lightweight Rust application that reads and displays the contents of files or standard input. It's similar to the Unix `cat` command, allowing you to quickly view file contents or process piped input.
+Gaspy is a lightweight Rust application that provides file reading and line counting capabilities. It can:
 
+- Display file contents (similar to Unix `cat` command)
+- Count non-empty lines in files and directories
+- Process directories recursively
+- Exclude specific files or directories from processing
 
 ## Installation
 
@@ -37,6 +41,38 @@ To read and display the contents of one or more files:
 ```
 ./gaspy path/to/file1.txt path/to/file2.txt
 ```
+
+### Counting Lines
+
+To count non-empty lines in one or more files:
+
+```
+./gaspy -c path/to/file1.txt path/to/file2.txt
+```
+
+When multiple files are provided, a total count will also be displayed.
+
+### Processing Directories
+
+To count lines recursively in directories:
+
+```
+./gaspy -c -r path/to/directory
+```
+
+### Excluding Files/Directories
+
+To exclude specific files or directories by name:
+
+```
+./gaspy -c -r -e node_modules -e .git path/to/directory
+```
+
+## Command Line Options
+
+- `-c, --count`: Count non-empty lines instead of displaying file contents
+- `-r, --recursive`: Process directories recursively
+- `-e, --exclude <NAME>`: Exclude files/directories with the specified name (can be used multiple times)
 
 ## Error Handling
 
